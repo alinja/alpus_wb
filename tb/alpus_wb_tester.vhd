@@ -66,22 +66,19 @@ architecture rtl of alpus_wb_tester is
 	signal assert_fail2 : std_logic;
 	signal assert_fail3 : std_logic;
 	signal assert_fail4 : std_logic;
+	signal assert_fail5 : std_logic;
 	signal assert_fail : std_logic;
 	
 	signal master0_tos : alpus_wb32_tos_t;
 	signal master0_tom : alpus_wb32_tom_t;
-	signal master0pb_tos : alpus_wb32_tos_t;
-	signal master0pb_tom : alpus_wb32_tom_t;
-	signal master0pbb_tos : alpus_wb32_tos_t;
-	signal master0pbb_tom : alpus_wb32_tom_t;
 	signal master1_tos : alpus_wb32_tos_t;
 	signal master1_tom : alpus_wb32_tom_t;
 	signal master1pb_tos : alpus_wb32_tos_t;
 	signal master1pb_tom : alpus_wb32_tom_t;
-	signal master1pbb_tos : alpus_wb32_tos_t;
-	signal master1pbb_tom : alpus_wb32_tom_t;
 	signal master2_tos : alpus_wb32_tos_t;
 	signal master2_tom : alpus_wb32_tom_t;
+	signal master_commonpb_tos : alpus_wb32_tos_t;
+	signal master_commonpb_tom : alpus_wb32_tom_t;
 	signal master_common_tos : alpus_wb32_tos_t;
 	signal master_common_tom : alpus_wb32_tom_t;
 	signal slave0_tos : alpus_wb32_tos_t;
@@ -90,20 +87,24 @@ architecture rtl of alpus_wb_tester is
 	signal slave1_tom : alpus_wb32_tom_t;
 	signal slave2_tos : alpus_wb32_tos_t;
 	signal slave2_tom : alpus_wb32_tom_t;
-	signal slave2pbx_tos : alpus_wb32_tos_t;
-	signal slave2pbx_tom : alpus_wb32_tom_t;
 	signal slave2pb_tos : alpus_wb32_tos_t;
 	signal slave2pb_tom : alpus_wb32_tom_t;
 	signal slave3_tos : alpus_wb32_tos_t;
 	signal slave3_tom : alpus_wb32_tom_t;
+	signal slave3sa_tos : alpus_wb32_tos_t;
+	signal slave3sa_tom : alpus_wb32_tom_t;
 	signal slave4_tos : alpus_wb32_tos_t;
 	signal slave4_tom : alpus_wb32_tom_t;
+	signal slave5_tos : alpus_wb32_tos_t;
+	signal slave5_tom : alpus_wb32_tom_t;
 
 begin
 	res_ok <= res_ok0 and res_ok1;
-	assert_fail <= assert_fail0 or assert_fail1 or assert_fail2 or assert_fail3 or assert_fail4; 
+	assert_fail <= assert_fail0 or assert_fail1 or assert_fail2 or assert_fail3 or assert_fail4 or assert_fail5;
 
-	master0: alpus_wb_test_master port map (
+	master0: alpus_wb_test_master generic map (
+		PIPELINED => '1'
+	) port map (
 		clk => clk,
 		rst => rst,
 		req => req,
@@ -111,10 +112,12 @@ begin
 		addr => addr,
 		ack => ack,
 		res_ok => res_ok0,
-		wb_tos => master0pb_tos,
-		wb_tom => master0pb_tom );
+		wb_tos => master0_tos,
+		wb_tom => master0_tom );
 
-	master1: alpus_wb_test_master port map (
+	master1: alpus_wb_test_master generic map (
+		PIPELINED => '0'
+	) port map (
 		clk => clk,
 		rst => rst,
 		req => req1,
@@ -136,22 +139,11 @@ begin
 --		wb_tos => master2_tos,
 --		wb_tom => master2_tom );
 
-	master0pb: alpus_wb32_pipeline_bridge generic map (
-		REG_REQUEST => '1',
-		REG_STALL => '0',
-		REG_RESPONSE => '1'
-	) port map (
-		clk => clk,
-		rst => rst,
-		master_side_tos => master0pb_tos,
-		master_side_tom => master0pb_tom,
-		slave_side_tos => master0_tos,
-		slave_side_tom => master0_tom );
-	
 	master1pb: alpus_wb32_pipeline_bridge generic map (
+		MASTER_PIPELINED => '0',
 		REG_REQUEST => '0',
 		REG_STALL => '1',
-		REG_RESPONSE => '0'
+		REG_RESPONSE => '1'
 	) port map (
 		clk => clk,
 		rst => rst,
@@ -161,7 +153,8 @@ begin
 		slave_side_tom => master1_tom );
 
 	master_sel: alpus_wb32_master_select generic map (
-		NUM_MASTERS => 2
+		NUM_MASTERS => 2,
+		MASTER_PIPELINED => "11"
 	) port map (
 		clk => clk,
 		rst => rst,
@@ -171,6 +164,18 @@ begin
 		master_side_tom(0) => master0_tom,
 		master_side_tom(1) => master1_tom,
 		--master_side_tom(2) => master2_tom,
+		slave_side_tos => master_commonpb_tos,
+		slave_side_tom => master_commonpb_tom );
+
+	common_pb: alpus_wb32_pipeline_bridge generic map (
+		REG_REQUEST => '0',
+		REG_STALL => '0',
+		REG_RESPONSE => '0'
+	) port map (
+		clk => clk,
+		rst => rst,
+		master_side_tos => master_commonpb_tos,
+		master_side_tom => master_commonpb_tom,
 		slave_side_tos => master_common_tos,
 		slave_side_tom => master_common_tom );
 
@@ -180,11 +185,13 @@ begin
 	slave2_tos <= alpus_wb32_slave_select_tos(x"00002000", x"0000f000", master_common_tos);
 	slave3_tos <= alpus_wb32_slave_select_tos(x"00003000", x"0000f000", master_common_tos);
 	slave4_tos <= alpus_wb32_slave_select_tos(x"00004000", x"0000f000", master_common_tos);
+	slave5_tos <= alpus_wb32_slave_select_tos(x"00005000", x"0000f000", master_common_tos);
 	master_common_tom <= alpus_wb32_slave_select_tom(x"00000000", x"0000f000", master_common_tos, slave0_tom,
 		           alpus_wb32_slave_select_tom(x"00001000", x"0000f000", master_common_tos, slave1_tom,
 		           alpus_wb32_slave_select_tom(x"00002000", x"0000f000", master_common_tos, slave2_tom,
 		           alpus_wb32_slave_select_tom(x"00003000", x"0000f000", master_common_tos, slave3_tom,
-				   slave4_tom ))));
+		           alpus_wb32_slave_select_tom(x"00004000", x"0000f000", master_common_tos, slave4_tom,
+				   slave5_tom )))));
 
 	-- fast low-latency slave
 	slave0: alpus_wb_test_slave port map (
@@ -196,7 +203,8 @@ begin
 
 	-- stalling, long-latency slave
 	slave1: alpus_wb_test_slave generic map (
-		STALL_DURATION => 2,
+		STALL_DURATION => 4,
+		STALL_INVERTED => '1',
 		LATENCY => 3
 	) port map (
 		clk => clk,
@@ -208,7 +216,7 @@ begin
 	-- slave behind a pipeline bridge
 	slave2_pb: alpus_wb32_pipeline_bridge generic map (
 		REG_REQUEST => '1',
-		REG_STALL => '1',
+		REG_STALL => '0',
 		REG_RESPONSE => '0'
 	) port map (
 		clk => clk,
@@ -219,9 +227,9 @@ begin
 		slave_side_tom => slave2pb_tom	);
 
 	slave2: alpus_wb_test_slave generic map (
-		STALL_DURATION => 1,
-		STALL_INVERTED => '0',
-		LATENCY => 1
+		STALL_DURATION => 2,
+		STALL_INVERTED => '1',
+		LATENCY => 2
 	) port map (
 		clk => clk,
 		rst => rst,
@@ -229,17 +237,24 @@ begin
 		wb_tom => slave2pb_tom,
 		assert_fail => assert_fail2	);
 
-	-- non-pipelined slave TODO
+	-- non-pipelined slave
+	slave3_sa: alpus_wb32_stdmode_adapter generic map (
+		SLAVE_PIPELINED => '0'
+	) port map (
+		clk => clk,
+		rst => rst,
+		master_side_tos => slave3_tos,
+		master_side_tom => slave3_tom,
+		slave_side_tos => slave3sa_tos,
+		slave_side_tom => slave3sa_tom	);
 	slave3: alpus_wb_test_slave generic map (
-		PIPELINED => '1',
-		STALL_DURATION => 0,
-		STALL_INVERTED => '0',
+		PIPELINED => '0',
 		LATENCY => 1
 	) port map (
 		clk => clk,
 		rst => rst,
-		wb_tos => slave3_tos,
-		wb_tom => slave3_tom,
+		wb_tos => slave3sa_tos,
+		wb_tom => slave3sa_tom,
 		assert_fail => assert_fail3	);
 
 	-- shared slave
@@ -251,5 +266,15 @@ begin
 		wb_tos => slave4_tos,
 		wb_tom => slave4_tom,
 		assert_fail => assert_fail4	);
+
+	-- one more slave
+	slave5: alpus_wb_test_slave generic map (
+		LATENCY => 1
+	) port map (
+		clk => clk,
+		rst => rst,
+		wb_tos => slave5_tos,
+		wb_tom => slave5_tom,
+		assert_fail => assert_fail5	);
 
 end;

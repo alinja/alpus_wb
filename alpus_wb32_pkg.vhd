@@ -57,12 +57,12 @@ package alpus_wb32_pkg is
 
 	component alpus_wb32_master_select is
 	generic(
-		NUM_MASTERS : integer := 2
+		NUM_MASTERS : integer := 2;
+		MASTER_PIPELINED : std_logic_vector := "11"
 	);
 	port(
 		clk : in std_logic;
 		rst : in std_logic;
-
 		master_side_tos : in alpus_wb32_tos_array_t(0 to NUM_MASTERS-1);
 		master_side_tom : out alpus_wb32_tom_array_t(0 to NUM_MASTERS-1);
 		slave_side_tos : out alpus_wb32_tos_t;
@@ -70,16 +70,37 @@ package alpus_wb32_pkg is
 	);
 	end component;
 
+	-- NOTE: Stall is often the critical path, but registering it causes wait states.
+	-- NOTE: REG_STALL delays master side stb by one clk. Set also REG_REQUEST or REG_RESPONSE, or
+	--       make otherwise sure that ack latency doesn't become negative.
 	component alpus_wb32_pipeline_bridge is
 	generic(
+		MASTER_PIPELINED : std_logic := '1';
+		SLAVE_PIPELINED : std_logic := '1';
 		REG_REQUEST : std_logic := '0';
-		REG_STALL : std_logic := '1';
+		REG_STALL : std_logic := '0';
 		REG_RESPONSE : std_logic := '0'
 	);
 	port(
 		clk : in std_logic;
 		rst : in std_logic;
 
+		master_side_tos : in alpus_wb32_tos_t;
+		master_side_tom : out alpus_wb32_tom_t;
+		slave_side_tos : out alpus_wb32_tos_t;
+		slave_side_tom : in alpus_wb32_tom_t
+	);
+	end component;
+
+	-- Interface to standard mode (non-pipelined) components
+	component alpus_wb32_stdmode_adapter is
+	generic(
+		MASTER_PIPELINED : std_logic := '1';
+		SLAVE_PIPELINED : std_logic := '1'
+	);
+	port(
+		clk : in std_logic;
+		rst : in std_logic;
 		master_side_tos : in alpus_wb32_tos_t;
 		master_side_tom : out alpus_wb32_tom_t;
 		slave_side_tos : out alpus_wb32_tos_t;

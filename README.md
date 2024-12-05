@@ -1,11 +1,12 @@
-# Alpus - VHDL implementation of Pipelined Wishbone B4 interconnect
+# Alpus_wb - VHDL implementation of Pipelined Wishbone B4 interconnect
 
 Easy to use, high-performance and flexible VHDL implementation of Pipelined Wishbone B4 bus interconnect. 
 Intended to provide similar easyness and funcionality to generation based tools, but without generating.
 
 ### Easy to use:
-- No code generation needed, just add file ```alpus_wb32_all.vhd``` and ```use work.alpus_wb32_pkg.all```
-- No learning curve or installation just to get started
+- No code generation needed, just add file ```alpus_wb32_all.vhd```, ```use work.alpus_wb32_pkg.all``` and instantiate from the 
+templates.
+- No steep learning curve, no installation just to get started
 - LGPL license for free usage in projects
 
 ### High performance:
@@ -13,9 +14,10 @@ Intended to provide similar easyness and funcionality to generation based tools,
 - High clock achievable using pipeline bridges
 - Pipelined Wishbone supports 1 clock per transfer during block cycles
 
-### Flexible:
+### Flexible and scalable:
 - Compatible with most existing components using adapters
 - Shared bus or fully parallel interconnect can be achieved by placing components accordingly
+- Pipeline bridging allows nearly unlimited number of masters and slaves
 
 ```
              _____________       ________       ____________
@@ -24,25 +26,20 @@ Intended to provide similar easyness and funcionality to generation based tools,
 [master1]<->|_____________|     |________|     |____________|<->[std_slave_adapter]<->[slave2] 
 ```
 
-Currently a subset of Wishbone B4 specification is supported, covering most needs. 
+Supports a most commonly used subset of Wishbone B4 specification:
 - **Classic cycles** only for simplicity (registered feedback burst modes not supported).
-- **Pipelined** (not Standard) mode: one clock per transfer during bursts.
+- **Pipelined** mode (vs. Standard mode): one clock per transfer during bursts. Both master and slave can control transfer rate.
 - **32-bit data** and address bus. Trivially modifiable for other data widths.
-- **Byte addresses** for readibility. Address signal is always downto 0 and 2 LSBs are zero.
+- **Byte addresses** for readability. Address signal is always "downto 0" and 2 LSBs are zero.
 - Interconnect is so far **transparent** regarding **endianness**.
-
-- Pipelined wishbone differentiates stall/ack for reques/resposne handskake. => word per clock transfer bursts (master addressed)
-
-
-Supports a most commonly used subset of Wishbone bus: classic, block accesses. Supports accessing only one slave during a bus cycle.
 
 Alpus Pipelined Wishbone consists of parts:
 
 ## Bus signal as VHDL record
 
 Record types ```alpus_wb32_tos_t``` and ```alpus_wb32_tom_t``` are named according to **signal direction** 
-to master (**tom**) or to slave (**tos**), simplifying signal naming. Signals are always 32 bits wide, but 
-slaves can decode only the bits that are really used.
+to master (**tom**) or to slave (**tos**). This makes signal naming simple and consistent. Signals are always 32 bits wide, but 
+slaves can decode only those data/address bits that are really used.
 
 Example:
 ```
@@ -103,8 +100,12 @@ Example connecting two masters to a shared bus, and the bus to three slaves:
 ```
 ## Pipeline bridges and adapters
 
-- **Pipeline bridges** (alpus_wb_pipeline_bridge) can be added anywhere to break long combinatorial paths. They add latency but
-increase clock frequency. Which path to pipeline is set by generics. Note that registering the stall line adds wait states!
+- Adapter for **Standard mode** masters/slaves (**alpus_wb32_stdmode_adapter**) allows interfacing to legacy components
+with non-pipelined wishbone. The mode for each side is set independently. This functionality is also available in Pipeline bridge.
+Note that non-pipelined slaves will appear as having zero ack latency.
+- **Pipeline bridges** (**alpus_wb_pipeline_bridge**) can be added anywhere to break long combinatorial paths. They add latency but
+increase clock frequency. Which path to pipeline is set by generics. Note that registering the stall line adds one wait state, and
+ack latency is reduced by one (may become negative!).
 
 ```
 	bridge: alpus_wb_pipeline_bridge generic map (
@@ -119,8 +120,8 @@ increase clock frequency. Which path to pipeline is set by generics. Note that r
 		slave_side_tos => slave_tos,
 		slave_side_tom => slave_tom );
 ```
-- Adapter for std/pipelined (alpus_wb_std_slave_adapter, alpus_wb_std_master_adapter) (TODO)
-- CDC bridge (alpus_wb_cdc_bridge) (TODO) for clock domain crossing
+- CDC bridge (alpus_wb_cdc_bridge) (TODO) for clock domain crossing. Simple unbuffered slow variant and a fast 
+variant using async fifos?
 - Adapter for bus width (TODO)
 - Adapter for avalon/axi etc buses (TODO)
 
@@ -138,4 +139,9 @@ another pipelined access even if ack has not yet arrived
 
 ## Example design
 
-TBD
+The tb/ folder includes a testbench with an example design using most features. The test master and slave may be 
+useful as templates when creating new designs.
+
+The example design, with unregistered paths from master to slave, runs at nearly 200 MHz on Artix7 speed grade 1.
+
+Antoher small example of usage is in my [alpus_riscv_cpu repo](https://github.com/alinja/alpus_riscv_cpu).

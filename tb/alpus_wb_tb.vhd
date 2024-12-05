@@ -4,12 +4,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library work;
-use work.alpus_wb32_pkg.all;
 use work.alpus_wb_tester_pkg.all;
---use work.alpus_wb_test_slave_pkg.all;
---use work.alpus_wb_test_master_pkg.all;
---use work.alpus_wb_pipeline_bridge_pkg.all;
---use work.alpus_wb_master_select_pkg.all;
 
 entity alpus_wb_tb is
 end entity alpus_wb_tb;
@@ -33,24 +28,6 @@ architecture tb of alpus_wb_tb is
 	signal ack1 : std_logic := '1';
 	signal cmd1 : integer;
 	
-	signal master0_tos : alpus_wb32_tos_t;
-	signal master0_tom : alpus_wb32_tom_t;
-	signal master1_tos : alpus_wb32_tos_t;
-	signal master1_tom : alpus_wb32_tom_t;
-	signal master_common_tos : alpus_wb32_tos_t;
-	signal master_common_tom : alpus_wb32_tom_t;
-	signal slave0_tos : alpus_wb32_tos_t;
-	signal slave0_tom : alpus_wb32_tom_t;
-	signal slave1_tos : alpus_wb32_tos_t;
-	signal slave1_tom : alpus_wb32_tom_t;
-	signal slave2_tos : alpus_wb32_tos_t;
-	signal slave2_tom : alpus_wb32_tom_t;
-	signal slave2pbx_tos : alpus_wb32_tos_t;
-	signal slave2pbx_tom : alpus_wb32_tom_t;
-	signal slave2pb_tos : alpus_wb32_tos_t;
-	signal slave2pb_tom : alpus_wb32_tom_t;
-	signal slave3_tos : alpus_wb32_tos_t;
-	signal slave3_tom : alpus_wb32_tom_t;
 
 begin
 
@@ -138,6 +115,12 @@ begin
 		tester(0, x"400c");
 		tester(1, x"4008");
 		tester(1, x"400c");
+		tester(0, x"4008");
+
+		tester(2, x"5000");
+		tester(3, x"5000");
+		tester(2, x"5000");
+		tester(3, x"5000");
 
 		req1 <= '0'; cmd1 <= 0; addr1 <= x"0000";
 		wait until rising_edge(clk);
